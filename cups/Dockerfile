@@ -1,9 +1,10 @@
-ARG BUILD_FROM=ghcr.io/hassio-addons/base:13.1.5
-FROM ${BUILD_FROM}
+ARG BUILD_FROM
+FROM $BUILD_FROM
 
 LABEL io.hass.version="1" io.hass.type="addon" io.hass.arch="armhf|aarch64|i386|amd64"
 
-RUN apk add --no-cache --virtual .build-dependencies \
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
         cups \
         avahi-daemon \
         libnss-mdns \
@@ -22,7 +23,7 @@ RUN apk add --no-cache --virtual .build-dependencies \
         samba \
         bash-completion \
         nginx \
-    && apk del --no-cache --purge .build-dependencies \
+    && apt-get clean -y \
     && rm -rf /var/lib/apt/lists/*
 
 COPY rootfs /
