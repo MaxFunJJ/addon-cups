@@ -1,10 +1,9 @@
-ARG BUILD_FROM
-FROM $BUILD_FROM
+ARG BUILD_FROM=ghcr.io/hassio-addons/base:13.1.5
+FROM ${BUILD_FROM}
 
 LABEL io.hass.version="1" io.hass.type="addon" io.hass.arch="armhf|aarch64|i386|amd64"
 
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
+RUN apk add --no-cache --virtual .build-dependencies \
         cups \
         avahi-daemon \
         libnss-mdns \
@@ -22,16 +21,22 @@ RUN apt-get update \
         nano \
         samba \
         bash-completion \
-    && echo "deb http://nginx.org/packages/debian `lsb_release -cs` nginx" \
-        | tee /etc/apt/sources.list.d/nginx.list \
-    && curl -fsSL https://nginx.org/keys/nginx_signing.key | apt-key add - \
-    && apt-get update \
-    && apt-get install nginx nginx-module-njs \
-    && apt-get clean -y \
+        nginx \
+    && apk del --no-cache --purge .build-dependencies \
     && rm -rf /var/lib/apt/lists/*
 
 COPY rootfs /
 
+# Health check
+HEALTHCHECK --start-period=10m \
+    CMD curl --fail http://127.0.0.1:46836 || exit 1
+
+# Corrects permissions for s6 v3
+RUN if [ -d /etc/cont-init.d ]; then chmod -R 755 /etc/cont-init.d; fi && \
+    if [ -d /etc/services.d ]; then chmod -R 755 /etc/services.d; fi && \
+    if [ -f /entrypoint.sh ]; then chmod 755 /entrypoint.sh; fi
+
 EXPOSE 631 445 137 139
 
+RUN chmod a+x /run.sh
 CMD ["/run.sh"]
